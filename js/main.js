@@ -108,6 +108,9 @@ function processKoalaDocument(file) {
 const fileInput = document.querySelector(".file-input")
 
 function fileInputHandler() {
+  
+  const outputFilename = this.files[0].name.replace(".koala", ".ablbundle")
+
   const reader = new FileReader()
 
   reader.onload = function (event) {
@@ -127,7 +130,8 @@ function fileInputHandler() {
     )
 
     const compressed = fflate.zipSync(decompressed)
-    saveAs(new Blob([compressed], { type: "application/zip" }), "modified.ablbundle")
+
+    saveAs(new Blob([compressed], { type: "application/zip" }), outputFilename)
   }
 
   reader.readAsArrayBuffer(this.files[0])
