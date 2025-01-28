@@ -26,10 +26,10 @@ body {
 
 .info {
     padding: 1rem;
-
+    max-width: 50vw;
     th, td {
         text-align: left;
-        min-width: 30vw;
+        min-width: 200px;
     }
 }
 
