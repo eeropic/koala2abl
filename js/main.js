@@ -3,11 +3,9 @@ import * as fflate from "../lib/fflate.js"
 import {
   PadToDrumRackSlot,
   PadToSampler,
-  QuokkaPadToWavetable,
   QuokkaPadToDrift,
   sequenceToClipSlots,
-  clampOverlappingNotes,
-  limiterPreset
+  koalaToAblDevice,
 } from "./ablkoala.js"
 
 import { saveAs, stringifyAndEncode, decodeAndParse } from "./utils.js"
@@ -15,6 +13,7 @@ import { saveAs, stringifyAndEncode, decodeAndParse } from "./utils.js"
 function processKoalaDocument(file) {
   const sequenceData = decodeAndParse(file["sequence.json"])
   const samplerData = decodeAndParse(file["sampler/sampler.json"])
+  const mixerData = decodeAndParse(file["mixer.json"])
 
   const bpm = sequenceData.bpm || 120
 
@@ -96,7 +95,9 @@ function processKoalaDocument(file) {
     tracks,
     masterTrack: {
       color: 0,
-      devices: [limiterPreset],
+      devices: mixerData.master.chain
+        .filter(device => device != null)
+        .map(device => koalaToAblDevice[device.name](device)),
       mixer: {
         pan: 0.0,
         volume: 0.0,
@@ -104,6 +105,7 @@ function processKoalaDocument(file) {
     },
   }
 }
+
 
 const fileInput = document.querySelector(".file-input")
 

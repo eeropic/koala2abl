@@ -469,7 +469,7 @@ export const limiterPreset = {
   deviceData: {},
 }
 
-const koalaToAblDevice = {
+export const koalaToAblDevice = {
   EQ: ({bypass, parameters}) => ({
     kind: 'channelEq',
     parameters: {
@@ -500,7 +500,7 @@ const koalaToAblDevice = {
       Feedback: parameters.feedback,
       Filter_Frequency: parameters.freq,
       DryWet: parameters.mix,
-      DelayLine_Link: true,
+      DelayLine_Link: parameters.stereoLink != 1.0,
       DelayLine_SyncL: (parameters.sync == 1.0),
       DelayLine_SyncR: (parameters.sync == 1.0),
       DelayLine_SyncedSixteenthL: [1,1,1,1,1,1,2,3,3,4,5,5,6,8,12,16,16,16,16,16,16,16][~~parameters['sync delay L']].toString(),
@@ -542,16 +542,16 @@ const koalaToAblDevice = {
       SampleRate: parameters.samplerate,      //  20 ... 40000
     }
   }),
-  FREEVERB: ({bypass, parameters: param}) => ({
+  FREEVERB: ({bypass, parameters}) => ({
     kind: 'reverb',
     parameters: {
       Enabled: !bypass,
-      DecayTime: parameters.size * 10000.0,   // 200 ... 60000
-      RoomSize: parameters.size * 100.0,      // 0.22 ... 500
-      ShelfHiFreq: parameters.tone * 16000.0, // 20 ... 16000
-      ShelfHiGain: 0.2,                       // 0.2 ... 1.0
+      DecayTime: parameters.size * 10000.0,          // 200 ... 60000
+      RoomSize: parameters.size * 100.0,             // 0.22 ... 500
+      ShelfHiFreq: parameters.tone * 14000.0 + 2000, // 20 ... 16000
+      ShelfHiGain: 0.2,                              // 0.2 ... 1.0
       StereoSeparation: parameters.stereo * 100.0,
-      MixDirect: parameters['dry/wet'],       // dry/wet 0.1-1.0
+      MixDirect: parameters['dry/wet'],              // dry/wet 0.1-1.0
     }
   }),
   DRIVE: ({bypass, parameters}) => ({
@@ -560,8 +560,18 @@ const koalaToAblDevice = {
       Enabled: !bypass,
       Type: 'Analog Clip',
       PreDrive: (parameters.drive * 2.0 - 1) * 36.0,  // -36.0 ... 36.0
-      PostDrive: (parameters.out - 1.0) * 36.0,       // -36.0 ... 0.0
+      PostDrive: (parameters.out / 90.0) * 36.0,      // -36.0 ... 0.0
       DryWet: parameters.mix,                         //   0.0 ... 1.0
     },
+  }),
+  LIMITER: ({bypass, parameters}) => ({
+    kind: "limiter",
+    name: "",
+    parameters: {
+      Enabled: true,
+      Lookahead: parameters.attack < 2.25 ? '1.5 ms' : parameters.attack >= 2.25 && parameters.attack < 4.5 ? '3 ms' : '6 ms',
+      Gain: parameters.gain,                          // -24.0 ... 24.0
+      Release: parameters.release,
+    }, 
   })
 }
