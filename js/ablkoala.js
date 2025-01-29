@@ -468,3 +468,100 @@ export const limiterPreset = {
   },
   deviceData: {},
 }
+
+const koalaToAblDevice = {
+  EQ: ({bypass, parameters}) => ({
+    kind: 'channelEq',
+    parameters: {
+      Enabled: !bypass,
+      Gain: 1.0,
+      LowShelfGain: (parameters['lo gain'] + 18.0) / 18.0,   // 0.0 ... 2.0 (-15 ... 15db)
+      MidFrequency: parameters['mid freq'],                  // 120hz - 7500hz
+      MidGain: (parameters['mid gain'] + 18.0) / 18.0,       // 0.0 ... 2.0 (-12 ... 12db)
+      HighShelfGain: (parameters['hi gain'] + 18.0) / 18.0,  // 0.0 ... 2.0 (-15 ... 15db)
+    }
+  }),
+  CHORUS: ({bypass, parameters}) => ({
+    kind: 'chorus',
+    parameters: {
+      Enabled: !bypass,
+      Amount: parameters.depth,
+      DryWet: parameters.mix,
+      Rate: parameters.rate,
+      Width: parameters.stereo,
+    }
+  }),
+  DELAY: ({bypass, parameters}) => ({
+    kind: 'delay',
+    parameters: {
+      Enabled: !bypass,
+      DelayLine_TimeL: parameters.delayL,             // 0.001 ... 5.0
+      DelayLine_TimeR: parameters.delayR,             // 0.001 ... 5.0
+      Feedback: parameters.feedback,
+      Filter_Frequency: parameters.freq,
+      DryWet: parameters.mix,
+      DelayLine_Link: true,
+      DelayLine_SyncL: (parameters.sync == 1.0),
+      DelayLine_SyncR: (parameters.sync == 1.0),
+      DelayLine_SyncedSixteenthL: [1,1,1,1,1,1,2,3,3,4,5,5,6,8,12,16,16,16,16,16,16,16][~~parameters['sync delay L']].toString(),
+      DelayLine_SyncedSixteenthR: [1,1,1,1,1,1,2,3,3,4,5,5,6,8,12,16,16,16,16,16,16,16][~~parameters['sync delay R']].toString(),
+      Filter_Bandwidth: ((parameters.width - 1) / 19.0) * 8.5 + 0.5,   // 0.5 ... 9.0
+    }
+  }),
+  COMPRESSOR: ({bypass, parameters}) => ({
+    kind: 'compressor',
+    parameters: {
+      Enabled: !bypass,
+      Model: 'Peak',
+      Attack: parameters.attack,                                // 0.01 ... 1000 ms
+      GainCompensation: parameters.makeup == 1.0,               // makeup
+      Ratio: parameters.ratio,                                  // 1 ... inf (~64++++)
+      Release: parameters.release,                              // 1 ... 3000 ms
+      Threshold: Math.pow(10, parameters.threshold / 20.0),     // -inf ... 6.0db   (1.0 == 0.0db 2.0 == 6.0db)
+    }
+  }),
+  FLANGER: ({bypass, parameters}) => ({
+    kind: 'phaser',
+    parameters: {
+      Enabled: !bypass,
+      Mode: 'Flanger',
+      Modulation_Amount: parameters.depth,
+      Feedback: parameters.feedback,          // 0.0 ... 1.0
+      DryWet: parameters.mix,                
+      Modulation_Frequency: parameters.rate,  // 0.01 ... 40hz
+      Spread: parameters.stereo,               
+    }
+  }),
+  BITCOOKER: ({bypass, parameters}) => ({
+    kind: 'redux2',
+    parameters: {
+      Enabled: !bypass,
+      BitDepth: parameters['bit depth'],      //   1 ... 16
+      Jitter: parameters.jitter,              // 0.0 ... 1.0
+      DryWet: parameters.mix,                 // 0.1 ... 1.0
+      SampleRate: parameters.samplerate,      //  20 ... 40000
+    }
+  }),
+  FREEVERB: ({bypass, parameters: param}) => ({
+    kind: 'reverb',
+    parameters: {
+      Enabled: !bypass,
+      DecayTime: parameters.size * 10000.0,   // 200 ... 60000
+      RoomSize: parameters.size * 100.0,      // 0.22 ... 500
+      ShelfHiFreq: parameters.tone * 16000.0, // 20 ... 16000
+      ShelfHiGain: 0.2,                       // 0.2 ... 1.0
+      StereoSeparation: parameters.stereo * 100.0,
+      MixDirect: parameters['dry/wet'],       // dry/wet 0.1-1.0
+    }
+  }),
+  DRIVE: ({bypass, parameters}) => ({
+    kind: 'saturator',
+    parameters: {
+      Enabled: !bypass,
+      Type: 'Analog Clip',
+      PreDrive: (parameters.drive * 2.0 - 1) * 36.0,  // -36.0 ... 36.0
+      PostDrive: (parameters.out - 1.0) * 36.0,       // -36.0 ... 0.0
+      DryWet: parameters.mix,                         //   0.0 ... 1.0
+    },
+  })
+}
