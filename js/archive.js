@@ -98,3 +98,99 @@ const drift = {
   },
   deviceData: {},
 }
+
+const koalaDevices = [
+  {
+    bypass: false,
+    name: 'EQ',
+    parameters: {
+      'lo Q': 1.0,
+      'lo freq': 100.0,
+      'lo gain': 1.6228065490722656,
+      'mid Q': 1.0,
+      'mid freq': 638.339599609375,
+      'mid gain': 1.541666030883789,
+      'hi Q': 1.0,
+      'hi freq': 3378.44287109375,
+      'hi gain': 0.6896934509277344,
+    },
+  },
+  {
+    bypass: false,
+    name: 'CHORUS',
+    parameters: {
+      depth: 0.6000000238418579,
+      mix: 0.800000011920929,
+      rate: 1.0,
+      stereo: 0.0,
+    },
+  },
+  {
+    bypass: false,
+    name: 'DELAY',
+    parameters: {
+      delayL: 0.20000000298023224,
+      delayR: 0.20000000298023224,
+      feedback: 0.5,
+      freq: 750.0,
+      mix: 0.5,
+      stereoLink: 0.0,
+      sync: 0.0,
+      'sync delay L': 0.0,
+      'sync delay R': 0.0,
+      width: 3.200000047683716,
+    },
+  },
+  {
+    bypass: false,
+    name: 'COMPRESSOR',
+    parameters: {
+      attack: 10.0,
+      makeup: 0.0,
+      ratio: 6.0,
+      release: 100.0,
+      threshold: -6.0,
+      visual: 0.0,
+    },
+  },
+  {
+    bypass: false,
+    name: 'FLANGER',
+    parameters: {
+      depth: 0.20000000298023224,
+      feedback: 0.5,
+      mix: 0.5,
+      rate: 1.0,
+      stereo: 0.0,
+    },
+  },
+  {
+    bypass: false,
+    name: 'BITCOOKER',
+    parameters: {
+      'bit depth': 24.0,
+      jitter: 0.0,
+      mix: 1.0,
+      samplerate: 44100.0,
+    },
+  },
+  {
+    bypass: false,
+    name: 'FREEVERB',
+    parameters: {
+      'dry/wet': 0.20000000298023224,
+      size: 0.75,
+      stereo: 1.0,
+      tone: 0.2199999988079071,
+    },
+  },
+  {
+    bypass: false,
+    name: 'DRIVE',
+    parameters: {
+      drive: 0.0,
+      mix: 1.0,
+      out: 0.0,
+    },
+  },
+]
