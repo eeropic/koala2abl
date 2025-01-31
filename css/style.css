@@ -26,7 +26,6 @@ body {
 
 .info {
     padding: 1rem;
-    max-width: 50vw;
     th, td {
         text-align: left;
         min-width: 200px;
@@ -70,7 +69,8 @@ input[type="file"]::file-selector-button {
 
 .app {
     display: flex;
-    width: 100%;
+    max-width: 600px;
+    margin: auto;
     height: 100%;
     flex-direction: column;
 }
