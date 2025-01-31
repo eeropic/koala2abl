@@ -2,15 +2,7 @@ import { zeropadNum } from "./utils.js"
 
 const remapNoise = (value) => (value <= 0.7 ? 0.0 : (value - 0.7) / (1.0 - 0.7))
 
-const oscillatorWaveforms = [
-  "Sine",
-  "Triangle",
-  "Shark Tooth",
-  "Saturated",
-  "Saw",
-  "Pulse",
-  "Rectangle",
-]
+const driftWaveforms = ["Sine", "Triangle", "Shark Tooth", "Saturated", "Saw", "Pulse", "Rectangle"]
 
 const getOscillator = (shape) => {
   if (shape < 0.2) return "Saw"
@@ -18,7 +10,22 @@ const getOscillator = (shape) => {
   else if (shape >= 0.5) return "Sine"
 }
 
-export function QuokkaPadToDrift(sampleData) {
+const getQuokkaFreq = synthParams => {
+  const note = 60 + (synthParams.octave - 2) * 12 + synthParams.padParams.pitch
+  return 440 * Math.pow(2, (note - 69) / 12)
+}
+
+function koalaPitchModToAbleton(x, baseFreq) {
+  const k = 6
+  const magnitude = (Math.exp(k * Math.abs(x)) - 1) / (Math.exp(k) - 1)
+  const offset = magnitude * 20000 * (x >= 0 ? 1 : -1)
+  const freq = baseFreq + offset
+  const ratioKoala = freq / baseFreq
+  const y = Math.log2(ratioKoala) / 4
+  return y
+}
+
+export function QuokkaPadToDrift(sampleData, useVolume) {
   const { synthParams } = sampleData
 
   return {
@@ -65,7 +72,7 @@ export function QuokkaPadToDrift(sampleData) {
       Global_VoiceCount: "8", // ['4', '8', '16', '24', '32'],
       Global_VoiceMode: (synthParams.voiceMode == 0 ? "Poly" : "Mono") || "Poly", // ['Poly', 'Mono', 'Stereo', 'Unison'],
       Global_VolVelMod: 0.0, // [0.0, 1.0],
-      Global_Volume: synthParams.padParams.vol, // [0.0, 1.0],  // -inf / -60db ... 0.0db
+      Global_Volume: useVolume ? synthParams.padParams.vol: 1.0, // [0.0, 1.0],  // -inf / -60db ... 0.0db
       Lfo_Mode: synthParams.lfoSync ? "Sync" : "Freq", // ['Freq', 'Ratio', 'Time', 'Sync'],
       Lfo_Rate: synthParams.lfoSpeed, // [0.2, 1700.0], // hz
       Lfo_Retrigger: true,
@@ -112,7 +119,11 @@ export function QuokkaPadToDrift(sampleData) {
       PitchModulation_Source1: "LFO", // ['Env 1', 'Env 2 / Cyc', 'LFO', 'Key', 'Velocity', 'Modwheel', 'Pressure', 'Slide'],
       PitchModulation_Source2: "Env 2 / Cyc", // ['Env 1', 'Env 2 / Cyc', 'LFO', 'Key', 'Velocity', 'Modwheel', 'Pressure', 'Slide'],
       PitchModulation_Amount1: synthParams.lfoTarget == 0 ? synthParams.lfoDepth : 0.0, // [-1.0, 1.0],
-      PitchModulation_Amount2: synthParams.modEnvTarget == 0 ? synthParams.modEnvDepth : 0.0, // [-1.0, 1.0],
+      PitchModulation_Amount2: synthParams.modEnvTarget == 0 ? (
+        synthParams.modEnvDepth >= 0 
+        ? koalaPitchModToAbleton(synthParams.modEnvDepth,getQuokkaFreq(synthParams))
+        : synthParams.modEnvDepth * 0.5
+      ) : 0.0, // [-1.0, 1.0],
 
       /*
         Voice_Oscillator1_Wavetables_WavePosition: [0.666, 1.0, 0.0, 0.0, 0.0][
@@ -367,7 +378,7 @@ export function PadToDrumRackSlot(padObject) {
   return {
     name: padObject.type == "sample" ? pad : `${pad}-${padObject.type}`,
     color: 15,
-    devices: [padObject.type == "sample" ? PadToDrumCell(padObject) : QuokkaPadToDrift(padObject)],
+    devices: [padObject.type == "sample" ? PadToDrumCell(padObject) : QuokkaPadToDrift(padObject, false)],
     drumZoneSettings: {
       receivingNote: 36 + parseInt(pad),
       sendingNote: 60,
@@ -380,44 +391,54 @@ export function PadToDrumRackSlot(padObject) {
   }
 }
 
-export function sequenceToClipSlots(sequenceData, samplerData, trackNumber) {
-  return sequenceData.sequences.map((sequence, sequenceNumber) => {
-    if (sequence.pattern.notes != null) {
-      const notes = sequence.pattern.notes
-        .filter(
-          (note) =>
-            samplerData.pads.find((padData) => padData.pad == note.num) &&
-            samplerData.pads.find((padData) => padData.pad == note.num).track == trackNumber
-        )
-        .map((note, n) => {
+export function sequenceToClipSlots(sequenceData, pads) {
+  return sequenceData.sequences.map((sequence, seqIdx) => {
+    if (!sequence.pattern?.notes) {
+      return { hasStop: true, clip: null }
+    }
+
+    const notes = sequence.pattern.notes
+      .filter((note) => pads.some((p) => p.pad == note.num))
+      .map((note) => {
+        const pad = pads.find((p) => p.pad == note.num)
+        if (pad?.hasPitchVariation) {
           return {
-            noteNumber: trackNumber == 0 ? 36 + note.num : Math.round(60 + note.pitch),
+            noteNumber: Math.round(60 + note.pitch),
             startTime: note.timeOffset / 4096,
             duration: Math.max(0.01, Math.abs(note.length) / 4096),
             velocity: note.vel,
             offVelocity: note.vel,
           }
-        })
-
-      if (notes.length)
-        return {
-          hasStop: true,
-          clip: {
-            name: `Sequence ${zeropadNum(sequenceNumber)}`,
-            region: {
-              start: 0.0,
-              end: sequence.pattern.numBars * 4,
-              loop: {
-                start: 0.0,
-                end: sequence.pattern.numBars * 4,
-                isEnabled: true,
-              },
-            },
-            notes: clampOverlappingNotes(notes),
-          },
         }
-      else return { hasStop: true, clip: null }
-    } else return { hasStop: true, clip: null }
+        return {
+          noteNumber: 36 + note.num,
+          startTime: note.timeOffset / 4096,
+          duration: Math.max(0.01, Math.abs(note.length) / 4096),
+          velocity: note.vel,
+          offVelocity: note.vel,
+        }
+      })
+
+    if (!notes.length) {
+      return { hasStop: true, clip: null }
+    }
+
+    return {
+      hasStop: true,
+      clip: {
+        name: `Sequence ${zeropadNum(seqIdx)}`,
+        region: {
+          start: 0.0,
+          end: sequence.pattern.numBars * 4,
+          loop: {
+            start: 0.0,
+            end: sequence.pattern.numBars * 4,
+            isEnabled: true,
+          },
+        },
+        notes: clampOverlappingNotes(notes),
+      },
+    }
   })
 }
 
@@ -444,29 +465,6 @@ export function clampOverlappingNotes(notes, threshold = 0.05, minDuration = 0.0
   }
 
   return sorted
-}
-
-export const limiterPreset = {
-  presetUri: null,
-  kind: "limiter",
-  name: "",
-  parameters: {
-    AutoRelease: false,
-    Ceiling: -0.3,
-    Enabled: true,
-    Gain: 0.0,
-    LegacySmoothing: true,
-    LinkAmount: 1.0,
-    LinkAmountMidSide: 0.0,
-    Lookahead: "1.5 ms",
-    Maximize: false,
-    MaximizeOutput: 0.0,
-    MaximizeThreshold: 0.0,
-    Mode: "Standard",
-    Release: 100.0,
-    Routing: "L/R",
-  },
-  deviceData: {},
 }
 
 export const koalaToAblDevice = {
@@ -546,7 +544,7 @@ export const koalaToAblDevice = {
     kind: 'reverb',
     parameters: {
       Enabled: !bypass,
-      DecayTime: parameters.size * 10000.0,          // 200 ... 60000
+      DecayTime: parameters.size * 8000.0,          // 200 ... 60000
       RoomSize: parameters.size * 100.0,             // 0.22 ... 500
       ShelfHiFreq: parameters.tone * 14000.0 + 2000, // 20 ... 16000
       ShelfHiGain: 0.2,                              // 0.2 ... 1.0
@@ -559,7 +557,7 @@ export const koalaToAblDevice = {
     parameters: {
       Enabled: !bypass,
       Type: 'Analog Clip',
-      PreDrive: (parameters.drive * 2.0 - 1) * 36.0,  // -36.0 ... 36.0
+      PreDrive: parameters.drive,  // -36.0 ... 36.0
       PostDrive: (parameters.out / 90.0) * 36.0,      // -36.0 ... 0.0
       DryWet: parameters.mix,                         //   0.0 ... 1.0
     },

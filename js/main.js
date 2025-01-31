@@ -8,7 +8,7 @@ import {
   koalaToAblDevice,
 } from "./ablkoala.js"
 
-import { saveAs, stringifyAndEncode, decodeAndParse } from "./utils.js"
+import { saveAs, stringifyAndEncode, decodeAndParse, zeropadNum } from "./utils.js"
 
 function processKoalaDocument(file) {
   const sequenceData = decodeAndParse(file["sequence.json"])
@@ -17,73 +17,85 @@ function processKoalaDocument(file) {
 
   const bpm = sequenceData.bpm || 120
 
-  let trackCount = 1
-
-  console.log(sequenceData)
-  console.log(samplerData)
+  if(samplerData.pads == null) return null
 
   samplerData.pads.forEach((padData) => {
     const padNumber = padData.pad
     padData.hasPitchVariation = false
-    padData.track = 0
-    // koala pads with varying pitch go to separate tracks
+    padData.bus ??= padData.synthParams.padParams.bus ?? -1
     sequenceData.sequences.forEach((sequence) =>
       sequence.pattern?.notes?.forEach((note) => {
         if (padNumber == note.num && note.pitch != 0 && !padData.hasPitchVariation) {
           padData.hasPitchVariation = true
-          padData.track = trackCount++
         }
       })
     )
-    console.log(padData.pad, padData.type, padData.hasPitchVariation, padData.track)
   })
 
   const tracks = []
 
-  for (let trackNumber = 0; trackNumber < trackCount; trackNumber++) {
-    // handle sequences
-    const clipSlots = sequenceToClipSlots(sequenceData, samplerData, trackNumber)
+  const usedBuses = [
+    ...new Set(
+      samplerData.pads
+        .filter((p) => !p.hasPitchVariation)
+        .map((p) => p.bus)
+    ),
+  ].sort((a, b) => a - b)
 
-    // handle tracks + devices
-    if (trackNumber == 0) {
-      tracks.push({
-        kind: "midi",
-        name: `Koala-${trackNumber}`,
-        clipSlots,
-        devices: [
-          {
-            presetUri: null,
-            kind: "drumRack",
-            name: "KoalaRack",
-            chains: samplerData.pads.filter((padData) => padData.track == 0).map(PadToDrumRackSlot),
-          },
-        ],
-      })
-    } else {
-      const padObject = samplerData.pads.find((padData) => padData.track == trackNumber)
-      let pan = 0.0
-      let vol = 0.0
-      if (padObject.type == "sample") {
-        pan = padObject.pan * 2.0 - 1.0
-        vol = (padObject.vol - 1) * 6.0
-      } else {
-        pan = padObject.synthParams.padParams.pan * 2.0 - 1.0
-        vol = (padObject.synthParams.padParams.vol - 1) * 6.0
-      }
-      tracks.push({
-        kind: "midi",
-        name: `Koala-${trackNumber}`,
-        clipSlots,
-        devices: [
-          padObject.type == "sample" ? PadToSampler(padObject) : QuokkaPadToDrift(padObject),
-        ],
-        mixer: {
-          pan: pan * 50.0,
-          vol,
+  const pitchPads = samplerData.pads.filter((p) => p.hasPitchVariation)
+
+  usedBuses.forEach((busValue, index) => {
+    const busPads = samplerData.pads.filter(
+      (p) => p.bus === busValue && !p.hasPitchVariation
+    )
+    if (!busPads.length) return
+    const clipSlots = sequenceToClipSlots(sequenceData, busPads)
+    
+    const busEffects = busValue >= 0 
+    ? mixerData.buses[busValue].chain
+      .filter(device => device != null)
+      .map(device => koalaToAblDevice[device.name](device)) 
+    : []
+
+    tracks.push({
+      kind: "midi",
+      name: {"-1": "Main", 0: "Bus A", 1: "Bus B", 2: "Bus C", 3: "Bus D"}[busValue],
+      clipSlots,
+      devices: [
+        {
+          presetUri: null,
+          kind: "drumRack",
+          name: "KoalaRack",
+          chains: busPads.map(PadToDrumRackSlot),
         },
-      })
-    }
-  }
+        ...busEffects
+      ],
+    })
+  })  
+
+  pitchPads.forEach((pad, i, pads) => {
+    const clipSlots = sequenceToClipSlots(sequenceData, pitchPads)
+    const pan = ((pad.type === "sample" ? pad.pan : pad.synthParams.padParams.pan) * 2 - 1) * 50
+    const vol = (pad.type === "sample" ? pad.vol : pad.synthParams.padParams.vol - 1) * 6
+    const bus = pads[0].bus
+
+    const busEffects = bus >= 0 
+      ? mixerData.buses[bus].chain
+        .filter(device => device != null)
+        .map(device => koalaToAblDevice[device.name](device)) 
+      : []
+
+    tracks.push({
+      kind: "midi",
+      name: `Pad ${pad.pad}`,
+      clipSlots,
+      devices: [
+        pad.type === "sample" ? PadToSampler(pad) : QuokkaPadToDrift(pad, true),
+        ...busEffects
+      ],
+      mixer: { pan, vol },
+    })
+  })
 
   // Build output data
   return {
@@ -99,43 +111,28 @@ function processKoalaDocument(file) {
         .filter(device => device != null)
         .map(device => koalaToAblDevice[device.name](device)),
       mixer: {
-        pan: 0.0,
-        volume: 0.0,
+        volume: (mixerData.master.volume - 1) * 6.0,
       },
     },
   }
 }
 
-
 const fileInput = document.querySelector(".file-input")
 
 function fileInputHandler() {
-  
   const outputFilename = this.files[0].name.replace(".koala", ".ablbundle")
-
   const reader = new FileReader()
-
   reader.onload = function (event) {
     const fileData = new Uint8Array(event.target.result)
     const decompressed = fflate.unzipSync(fileData)
-    console.log(decompressed)
     const files = Object.keys(decompressed)
-    console.log(files)
-
     const outputData = processKoalaDocument(decompressed)
-
+    if(outputData == null) return
     decompressed["Song.abl"] = stringifyAndEncode(outputData)
-
-    // clean up
-    Object.keys(decompressed).forEach(
-      (filename) => filename.includes(".json") && delete decompressed[filename]
-    )
-
+    Object.keys(decompressed).forEach(filename => filename.includes(".json") && delete decompressed[filename])
     const compressed = fflate.zipSync(decompressed)
-
     saveAs(new Blob([compressed], { type: "application/zip" }), outputFilename)
   }
-
   reader.readAsArrayBuffer(this.files[0])
 }
 
