@@ -365,6 +365,16 @@ export function PadToDrumCell(padObject) {
   }
 }
 
+function flipPadRowWithinBank(padNumber) {
+  const bank = Math.floor(padNumber / 16);
+  const subPad = padNumber % 16;
+  const row = Math.floor(subPad / 4);
+  const col = subPad % 4;
+  const flippedRow = 3 - row;
+  const newSubPad = flippedRow * 4 + col;
+  return bank * 16 + newSubPad;
+}
+
 export function PadToDrumRackSlot(padObject) {
   const { pad, chokeGroup } = padObject
 
@@ -382,12 +392,14 @@ export function PadToDrumRackSlot(padObject) {
   ? padObject.label
   : (padObject.uiState.currentPreset.match(/([^/]+)\.[^/.]+$/)?.[1] || "");
 
+  const receivingNote = 36 + flipPadRowWithinBank(parseInt(padObject.pad))
+
   return {
     name: label.length ? label : pad,
     color: 15,
     devices: [padObject.type == "sample" ? PadToDrumCell(padObject) : QuokkaPadToDrift(padObject, false)],
     drumZoneSettings: {
-      receivingNote: 36 + parseInt(pad),
+      receivingNote,
       sendingNote: 60,
       chokeGroup,
     },
@@ -418,7 +430,7 @@ export function sequenceToClipSlots(sequenceData, pads) {
           }
         }
         return {
-          noteNumber: 36 + note.num,
+          noteNumber: 36 + flipPadRowWithinBank(parseInt(note.num)),
           startTime: note.timeOffset / 4096,
           duration: Math.max(0.01, Math.abs(note.length) / 4096),
           velocity: note.vel,
