@@ -303,7 +303,8 @@ export function PadToSampler(padObject) {
   const {
     start = 0,
     end = 0,
-    zoomEnd = 0,
+    sampleLength = 1,
+    sampleRate = 44100,
 
     oneshot = true,
     pitch = 0,
@@ -322,14 +323,14 @@ export function PadToSampler(padObject) {
     name: "",
     parameters: {
       Enabled: true,
-      Voice_AmplitudeEnvelope_Attack: 0.003 + ((end - start) / zoomEnd) * (zoomEnd / 44100),
+      Voice_AmplitudeEnvelope_Attack: 0.003 + ((end - start) / sampleLength) * (sampleLength / sampleRate),
       Voice_AmplitudeEnvelope_Decay: 0,
-      Voice_AmplitudeEnvelope_Release: 0.003 + ((end - start) / zoomEnd) * (zoomEnd / 44100),
+      Voice_AmplitudeEnvelope_Release: 0.003 + ((end - start) / sampleLength) * (sampleLength / sampleRate),
       Voice_AmplitudeEnvelope_Sustain: 1.0,
       Voice_AmplitudeEnvelope_SustainMode: "Gate",
       Voice_Gain: 1.0,
-      Voice_PlaybackLength: (end - start) / zoomEnd,
-      Voice_PlaybackStart: start / zoomEnd,
+      Voice_PlaybackLength: (end - start) / sampleLength,
+      Voice_PlaybackStart: start / sampleLength,
       Voice_Transpose: pitch,
       Volume: (vol - 1) * 6.0 - 6.0,
     },
@@ -340,7 +341,7 @@ export function PadToSampler(padObject) {
 }
 
 export function PadToDrumCell(padObject) {
-  const { pad, pan, pitch, start, end, zoomEnd, oneshot, vol, sampleId } = padObject
+  const { pad, pan, pitch, start, end, sampleLength, oneshot, vol, sampleId } = padObject
   return {
     presetUri: null,
     kind: "drumCell",
@@ -353,8 +354,8 @@ export function PadToDrumCell(padObject) {
       Voice_Envelope_Hold: 0.1,
       Voice_Envelope_Mode: oneshot == "true" ? "A-H-D" : "A-S-R",
       Voice_Gain: 1.0,
-      Voice_PlaybackLength: (end - start) / zoomEnd,
-      Voice_PlaybackStart: start / zoomEnd,
+      Voice_PlaybackLength: (end - start) / sampleLength,
+      Voice_PlaybackStart: start / sampleLength,
       Voice_Transpose: Math.round(pitch),
       Volume: (vol - 1) * 6 - 6.0,
     },

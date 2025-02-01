@@ -8,18 +8,21 @@ import {
   koalaToAblDevice,
 } from "./ablkoala.js"
 
-import { saveAs, stringifyAndEncode, decodeAndParse, zeropadNum } from "./utils.js"
+import { saveAs, stringifyAndEncode, decodeAndParse, zeropadNum, parseWavData } from "./utils.js"
 
-function processKoalaDocument(file) {
-  const sequenceData = decodeAndParse(file["sequence.json"])
-  const samplerData = decodeAndParse(file["sampler/sampler.json"])
-  const mixerData = decodeAndParse(file["mixer.json"])
+function storeSampleLengths(data, document){
+  data.pads
+  .filter(pad => pad.type === "sample")
+  .forEach(padObj => {
+    const samplePath = `sampler/${padObj.sampleId}.wav`
+    const { lengthInSamples, sampleRate } = parseWavData(document[samplePath]);
+    padObj.sampleLength = lengthInSamples;
+    padObj.sampleRate = sampleRate;
+  })
+}
 
-  const bpm = sequenceData.bpm || 120
-
-  if(samplerData.pads == null) return null
-
-  samplerData.pads.forEach((padData) => {
+function storePitchVariations(data, sequenceData){
+  data.pads.forEach((padData) => {
     const padNumber = padData.pad
     padData.hasPitchVariation = false
     padData.bus ??= padData.synthParams.padParams.bus ?? -1
@@ -31,6 +34,20 @@ function processKoalaDocument(file) {
       })
     )
   })
+}
+
+function processKoalaDocument(file) {
+  const sequenceData = decodeAndParse(file["sequence.json"])
+  const samplerData = decodeAndParse(file["sampler/sampler.json"])
+  const mixerData = decodeAndParse(file["mixer.json"])
+
+  storeSampleLengths(samplerData, file)
+
+  const bpm = sequenceData.bpm || 120
+
+  if(samplerData.pads == null) return null
+
+  storePitchVariations(samplerData, sequenceData)
 
   const tracks = []
 
