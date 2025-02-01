@@ -468,6 +468,7 @@ export function sequenceToClipSlots(sequenceData, pads) {
             isEnabled: true,
           },
         },
+        grooveId: 1,
         notes: clampOverlappingNotes(notes),
       },
     }
@@ -650,4 +651,23 @@ export function sampleEQToChannelEQ(eq){
       HighShelfGain  // 0.0 ... 2.0 (-15 ... 15db)
     }
   }
+}
+
+function generate16SwingPattern(){
+  return [...new Array(16)].map((_, i) => {
+    const position8thNote = Math.floor(i / 2) / 2
+    const triplet = (i % 2 == 0) ? 0 : 1/3
+    return position8thNote + triplet
+  })
+}
+
+export const swing16ths = {
+  id: 1,
+  name: "Swing 16ths",
+  base: "1/16",
+  loop: {
+    start: 0.0,
+    end: 4.0,
+  },
+  events: generate16SwingPattern().map(time => ({time}))
 }

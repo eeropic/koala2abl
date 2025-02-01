@@ -6,7 +6,8 @@ import {
   QuokkaPadToDrift,
   sequenceToClipSlots,
   koalaToAblDevice,
-  sampleEQToChannelEQ
+  sampleEQToChannelEQ,
+  swing16ths
 } from "./ablkoala.js"
 
 import { saveAs, stringifyAndEncode, decodeAndParse, zeropadNum, parseWavData } from "./utils.js"
@@ -132,6 +133,7 @@ function processKoalaDocument(file) {
   return {
     $schema: "http://tech.ableton.com/schema/song/1.4.5/song.json",
     tempo: bpm,
+    globalGrooveAmount: sequenceData.swing * 130.0,
     rootNote: 0,
     scale: "Major",
     melodicLayout: "chromatic",
@@ -145,6 +147,9 @@ function processKoalaDocument(file) {
         volume: (mixerData.master.volume - 1) * 6.0,
       },
     },
+    grooves: [
+      swing16ths
+    ]
   }
 }
 
