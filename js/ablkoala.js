@@ -583,18 +583,24 @@ export const koalaToAblDevice = {
       SampleRate: parameters.samplerate,      //  20 ... 40000
     }
   }),
-  FREEVERB: ({bypass, parameters}) => ({
-    kind: 'reverb',
-    parameters: {
-      Enabled: !bypass,
-      DecayTime: parameters.size * 8000.0,          // 200 ... 60000
-      RoomSize: parameters.size * 100.0,             // 0.22 ... 500
-      ShelfHiFreq: parameters.tone * 14000.0 + 2000, // 20 ... 16000
-      ShelfHiGain: 0.2,                              // 0.2 ... 1.0
-      StereoSeparation: parameters.stereo * 100.0,
-      MixDirect: parameters['dry/wet'],              // dry/wet 0.1-1.0
+  FREEVERB: ({bypass, parameters}) => {
+    const DecayTime = ((Math.exp(3 * parameters.size) - 1) / (Math.exp(3) - 1)) * 8000.0
+    return {
+      kind: 'reverb',
+      parameters: {
+        Enabled: !bypass,
+        DecayTime,                                     // 200 ... 60000
+        RoomSize: parameters.size * 100.0,             // 0.22 ... 500
+        ShelfHiFreq: frequencyFromRange(parameters.tone, 16000, 4000), // 20 ... 16000
+        ShelfHiGain: 0.2,                              // 0.2 ... 1.0
+        StereoSeparation: parameters.stereo * 100.0,
+        MixDirect: parameters['dry/wet'],              // dry/wet 0.1-1.0
+        // MixDiffuse: 2.0,
+        // MixReflect: 1.0,
+        BandFreq: frequencyFromRange(parameters.tone, 18000, 830),
+      }
     }
-  }),
+  },
   DRIVE: ({bypass, parameters}) => ({
     kind: 'saturator',
     parameters: {
@@ -615,6 +621,10 @@ export const koalaToAblDevice = {
       Release: parameters.release,
     }, 
   })
+}
+
+function frequencyFromRange(x, fMax, fMin) {
+  return fMin * Math.pow(fMax / fMin, x);
 }
 
 export function sampleEQToChannelEQ(eq){
