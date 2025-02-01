@@ -91,7 +91,7 @@ function processKoalaDocument(file) {
   })  
 
   pitchPads.forEach((pad, i, pads) => {
-    const clipSlots = sequenceToClipSlots(sequenceData, pitchPads)
+    const clipSlots = sequenceToClipSlots(sequenceData, [pad])
     const pan = ((pad.type === "sample" ? pad.pan : pad.synthParams.padParams.pan) * 2 - 1) * 50
     const vol = (pad.type === "sample" ? pad.vol : pad.synthParams.padParams.vol - 1) * 6
     const bus = pads[0].bus
