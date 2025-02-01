@@ -584,7 +584,7 @@ export const koalaToAblDevice = {
     }
   }),
   FREEVERB: ({bypass, parameters}) => {
-    const DecayTime = ((Math.exp(3 * parameters.size) - 1) / (Math.exp(3) - 1)) * 8000.0
+    const DecayTime = ((Math.exp(3 * parameters.size) - 1) / (Math.exp(3) - 1)) * 7800.0 + 200
     return {
       kind: 'reverb',
       parameters: {
