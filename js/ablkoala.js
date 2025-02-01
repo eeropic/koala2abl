@@ -323,9 +323,9 @@ export function PadToSampler(padObject) {
     name: "",
     parameters: {
       Enabled: true,
-      Voice_AmplitudeEnvelope_Attack: 0.003 + ((end - start) / sampleLength) * (sampleLength / sampleRate),
-      Voice_AmplitudeEnvelope_Decay: 0,
-      Voice_AmplitudeEnvelope_Release: 0.003 + ((end - start) / sampleLength) * (sampleLength / sampleRate),
+      Voice_AmplitudeEnvelope_Attack: 0.003 + attack,
+      Voice_AmplitudeEnvelope_Decay: 0.003,
+      Voice_AmplitudeEnvelope_Release: 0.003 + release * 2.0,
       Voice_AmplitudeEnvelope_Sustain: 1.0,
       Voice_AmplitudeEnvelope_SustainMode: "Gate",
       Voice_Gain: 1.0,
@@ -349,8 +349,8 @@ export function PadToDrumCell(padObject) {
     parameters: {
       Pan: pan * 2 - 1,
       Voice_Detune: 0.0,
-      Voice_Envelope_Attack: 0.002,
-      Voice_Envelope_Decay: oneshot == "true" ? 60 : 0,
+      Voice_Envelope_Attack: 0.003,
+      Voice_Envelope_Decay: oneshot == "true" ? 60 : 0.005,
       Voice_Envelope_Hold: 0.1,
       Voice_Envelope_Mode: oneshot == "true" ? "A-H-D" : "A-S-R",
       Voice_Gain: 1.0,
