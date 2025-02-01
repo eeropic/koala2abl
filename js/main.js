@@ -6,6 +6,7 @@ import {
   QuokkaPadToDrift,
   sequenceToClipSlots,
   koalaToAblDevice,
+  sampleEQToChannelEQ
 } from "./ablkoala.js"
 
 import { saveAs, stringifyAndEncode, decodeAndParse, zeropadNum, parseWavData } from "./utils.js"
@@ -102,6 +103,14 @@ function processKoalaDocument(file) {
         .map(device => koalaToAblDevice[device.name](device)) 
       : []
 
+    const padEq = pad.type === "sample"
+      ? pad.eq
+      : pad.synthParams.padParams.eq
+
+    const padEqDevices = padEq.enabled === "true"
+      ? [sampleEQToChannelEQ(padEq)]
+      : []
+
       const label = pad.type === "sample"
       ? pad.label
       : (pad.uiState.currentPreset.match(/([^/]+)\.[^/.]+$/)?.[1] || "");
@@ -112,6 +121,7 @@ function processKoalaDocument(file) {
       clipSlots,
       devices: [
         pad.type === "sample" ? PadToSampler(pad) : QuokkaPadToDrift(pad, true),
+        ...padEqDevices,
         ...busEffects
       ],
       mixer: { pan, vol },

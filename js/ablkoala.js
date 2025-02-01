@@ -394,10 +394,23 @@ export function PadToDrumRackSlot(padObject) {
 
   const receivingNote = 36 + flipPadRowWithinBank(parseInt(padObject.pad))
 
+  const padEq = padObject.type === "sample"
+  ? padObject.eq
+  : padObject.synthParams.padParams.eq
+
+  const padEqDevices = padEq.enabled === "true"
+    ? [sampleEQToChannelEQ(padEq)]
+    : []
+
+  const devices = [
+    padObject.type == "sample" ? PadToDrumCell(padObject) : QuokkaPadToDrift(padObject, false),
+    ...padEqDevices
+  ]
+
   return {
     name: label.length ? label : pad,
     color: 15,
-    devices: [padObject.type == "sample" ? PadToDrumCell(padObject) : QuokkaPadToDrift(padObject, false)],
+    devices,
     drumZoneSettings: {
       receivingNote,
       sendingNote: 60,
@@ -487,17 +500,28 @@ export function clampOverlappingNotes(notes, threshold = 0.05, minDuration = 0.0
 }
 
 export const koalaToAblDevice = {
-  EQ: ({bypass, parameters}) => ({
-    kind: 'channelEq',
-    parameters: {
-      Enabled: !bypass,
-      Gain: 1.0,
-      LowShelfGain: (parameters['lo gain'] + 18.0) / 18.0,   // 0.0 ... 2.0 (-15 ... 15db)
-      MidFrequency: parameters['mid freq'],                  // 120hz - 7500hz
-      MidGain: (parameters['mid gain'] + 18.0) / 18.0,       // 0.0 ... 2.0 (-12 ... 12db)
-      HighShelfGain: (parameters['hi gain'] + 18.0) / 18.0,  // 0.0 ... 2.0 (-15 ... 15db)
+  EQ: ({bypass, parameters}) => {
+    const LowShelfGain = parameters['lo gain'] >= 0
+      ? (parameters['lo gain'] / 18.0) * 4 + 1
+      : (parameters['lo gain'] / 18.0) + 1
+    const MidGain = parameters['mid gain'] >= 0
+      ? (parameters['mid gain'] / 18.0) * 4 + 1
+      : (parameters['mid gain'] / 18.0) + 1
+    const HighShelfGain = parameters['hi gain'] >= 0
+      ? (parameters['hi gain'] / 18.0) * 5 + 1
+      : (parameters['hi gain'] / 18.0) + 1
+    return {
+      kind: 'channelEq',
+      parameters: {
+        Enabled: !bypass,
+        Gain: 1.0,
+        LowShelfGain,                         // 0.0 ... 5.0 (-15 ... 15db)
+        MidFrequency: parameters['mid freq'], // 120hz - 7500hz
+        MidGain,                              // 0.0 ... 4.0 (-12 ... 12db)
+        HighShelfGain,                        // 0.0 ... 5.0 (-15 ... 15db)
+      }
     }
-  }),
+  },
   CHORUS: ({bypass, parameters}) => ({
     kind: 'chorus',
     parameters: {
@@ -591,4 +615,29 @@ export const koalaToAblDevice = {
       Release: parameters.release,
     }, 
   })
+}
+
+export function sampleEQToChannelEQ(eq){
+  const LowShelfGain = eq.lo.gain >= 0
+    ? (eq.lo.gain / 18.0) * 4 + 1
+    : (eq.lo.gain / 18.0) + 1
+
+  const MidGain = eq.mid.gain >= 0
+    ? (eq.mid.gain / 18.0) * 4 + 1
+    : (eq.mid.gain / 18.0) + 1
+
+  const HighShelfGain = eq.hi.gain >= 0
+    ? (eq.hi.gain / 18.0) * 5 + 1
+    : (eq.hi.gain / 18.0) + 1
+
+  return {
+    kind: 'channelEq',
+    parameters: {
+      Gain: 1.0,
+      LowShelfGain,   // 0.0 ... 2.0 (-15 ... 15db)
+      MidFrequency: eq.mid.freq,                  // 120hz - 7500hz
+      MidGain,       // 0.0 ... 2.0 (-12 ... 12db)
+      HighShelfGain  // 0.0 ... 2.0 (-15 ... 15db)
+    }
+  }
 }
