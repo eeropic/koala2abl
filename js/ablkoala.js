@@ -315,6 +315,7 @@ export function PadToSampler(padObject) {
 
     vol = 0,
   } = padObject
+
   return {
     presetUri: null,
     kind: "melodicSampler",
@@ -375,8 +376,13 @@ export function PadToDrumRackSlot(padObject) {
     pan = padObject.synthParams.padParams.pan * 2.0 - 1.0
     vol = (padObject.synthParams.padParams.vol - 1) * 6.0
   }
+
+  const label = padObject.type === "sample"
+  ? padObject.label
+  : (padObject.uiState.currentPreset.match(/([^/]+)\.[^/.]+$/)?.[1] || "");
+
   return {
-    name: padObject.type == "sample" ? pad : `${pad}-${padObject.type}`,
+    name: label.length ? label : pad,
     color: 15,
     devices: [padObject.type == "sample" ? PadToDrumCell(padObject) : QuokkaPadToDrift(padObject, false)],
     drumZoneSettings: {

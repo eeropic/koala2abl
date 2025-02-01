@@ -85,9 +85,13 @@ function processKoalaDocument(file) {
         .map(device => koalaToAblDevice[device.name](device)) 
       : []
 
+      const label = pad.type === "sample"
+      ? pad.label
+      : (pad.uiState.currentPreset.match(/([^/]+)\.[^/.]+$/)?.[1] || "");
+
     tracks.push({
       kind: "midi",
-      name: `Pad ${pad.pad}`,
+      name: label.length ? label : `Pad ${pad.pad}`,
       clipSlots,
       devices: [
         pad.type === "sample" ? PadToSampler(pad) : QuokkaPadToDrift(pad, true),
