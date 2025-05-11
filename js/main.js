@@ -72,8 +72,9 @@ function processKoalaDocument(file) {
     
     const busEffects = busValue >= 0 
     ? mixerData.buses[busValue].chain
-      .filter(device => device != null)
-      .map(device => koalaToAblDevice[device.name](device)) 
+      .filter(Boolean)
+      .map(device => koalaToAblDevice[device.name]?.(device))
+      .filter(Boolean)
     : []
 
     tracks.push({
@@ -100,8 +101,9 @@ function processKoalaDocument(file) {
 
     const busEffects = bus >= 0 
       ? mixerData.buses[bus].chain
-        .filter(device => device != null)
-        .map(device => koalaToAblDevice[device.name](device)) 
+        .filter(Boolean)
+        .map(device => koalaToAblDevice[device.name]?.(device))
+        .filter(Boolean)
       : []
 
     const padEq = pad.type === "sample"
@@ -141,8 +143,9 @@ function processKoalaDocument(file) {
     masterTrack: {
       color: 0,
       devices: mixerData.master.chain
-        .filter(device => device != null)
-        .map(device => koalaToAblDevice[device.name](device)),
+        .filter(Boolean)
+        .map(device => koalaToAblDevice[device.name]?.(device))
+        .filter(Boolean),
       mixer: {
         volume: (mixerData.master.volume - 1) * 6.0,
       },
