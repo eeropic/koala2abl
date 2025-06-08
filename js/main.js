@@ -38,7 +38,11 @@ function storePitchVariations(data, sequenceData){
   })
 }
 
+
 function processKoalaDocument(file) {
+
+  const useLivePadOrdering = document.querySelector("#use-live-pad-ordering").checked
+
   const sequenceData = decodeAndParse(file["sequence.json"])
   const samplerData = decodeAndParse(file["sampler/sampler.json"])
   const mixerData = decodeAndParse(file["mixer.json"])
@@ -68,7 +72,7 @@ function processKoalaDocument(file) {
       (p) => p.bus === busValue && !p.hasPitchVariation
     )
     if (!busPads.length) return
-    const clipSlots = sequenceToClipSlots(sequenceData, busPads)
+    const clipSlots = sequenceToClipSlots(sequenceData, busPads, useLivePadOrdering)
     
     const busEffects = busValue >= 0 
     ? mixerData.buses[busValue].chain
@@ -99,10 +103,15 @@ function processKoalaDocument(file) {
     const vol = (pad.type === "sample" ? pad.vol : pad.synthParams.padParams.vol - 1) * 6
     const bus = pads[0].bus
 
+
+
     const busEffects = bus >= 0 
       ? mixerData.buses[bus].chain
         .filter(Boolean)
-        .map(device => koalaToAblDevice[device.name]?.(device))
+        .map(device => {
+          console.log(device)
+          return koalaToAblDevice[device.name]?.(device)
+        })
         .filter(Boolean)
       : []
 
@@ -176,3 +185,4 @@ function fileInputHandler() {
 }
 
 document.querySelector(".file-input").addEventListener("change", fileInputHandler, false)
+

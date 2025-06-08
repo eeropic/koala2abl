@@ -377,6 +377,7 @@ function flipPadRowWithinBank(padNumber) {
 
 export function PadToDrumRackSlot(padObject) {
   const { pad, chokeGroup } = padObject
+  const useLivePadOrdering = document.querySelector("#use-live-pad-ordering").checked
 
   let pan = 0.0
   let vol = 0.0
@@ -392,7 +393,11 @@ export function PadToDrumRackSlot(padObject) {
   ? padObject.label
   : (padObject.uiState.currentPreset.match(/([^/]+)\.[^/.]+$/)?.[1] || "");
 
-  const receivingNote = 36 + flipPadRowWithinBank(parseInt(padObject.pad))
+  const receivingNote = 36 + (
+    useLivePadOrdering
+    ? parseInt(padObject.pad)
+    : flipPadRowWithinBank(parseInt(padObject.pad))
+  )
 
   const padEq = padObject.type === "sample"
   ? padObject.eq
@@ -423,12 +428,11 @@ export function PadToDrumRackSlot(padObject) {
   }
 }
 
-export function sequenceToClipSlots(sequenceData, pads) {
+export function sequenceToClipSlots(sequenceData, pads, useLivePadOrdering) {
   return sequenceData.sequences.map((sequence, seqIdx) => {
     if (!sequence.pattern?.notes) {
       return { hasStop: true, clip: null }
     }
-
     const notes = sequence.pattern.notes
       .filter((note) => pads.some((p) => p.pad == note.num))
       .map((note) => {
@@ -443,7 +447,9 @@ export function sequenceToClipSlots(sequenceData, pads) {
           }
         }
         return {
-          noteNumber: 36 + flipPadRowWithinBank(parseInt(note.num)),
+          noteNumber: 36 + (useLivePadOrdering 
+            ? parseInt(note.num) 
+            : flipPadRowWithinBank(parseInt(note.num))),
           startTime: note.timeOffset / 4096,
           duration: Math.max(0.01, Math.abs(note.length) / 4096),
           velocity: note.vel,
@@ -606,10 +612,21 @@ export const koalaToAblDevice = {
     kind: 'saturator',
     parameters: {
       Enabled: !bypass,
-      Type: 'Analog Clip',
+      Type: 'Digital Clip',
       PreDrive: parameters.drive,  // -36.0 ... 36.0
       PostDrive: (parameters.out / 90.0) * 36.0,      // -36.0 ... 0.0
       DryWet: parameters.mix,                         //   0.0 ... 1.0
+    },
+  }),
+  CLIPPER: ({bypass, parameters}) => ({
+    kind: 'saturator',
+    parameters: {
+      Enabled: !bypass,
+      Type: 'Bass Shaper',
+      Threshold: parameters.threshold,
+      PreDrive: parameters.input,
+      PostDrive: (parameters.output / 90.0) * 36.0,      // -36.0 ... 0.0
+      DryWet: 1.0
     },
   }),
   LIMITER: ({bypass, parameters}) => ({
